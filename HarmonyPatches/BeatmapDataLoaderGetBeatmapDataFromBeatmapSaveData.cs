@@ -1,21 +1,10 @@
-﻿using System;
+﻿using Harmony;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Harmony;
 using UnityEngine;
 namespace SongCore.HarmonyPatches
 {
 
-    [HarmonyPatch(typeof(BeatmapDataLoader),
-          new Type[] {
-            typeof(List<BeatmapSaveData.NoteData>),
-            typeof(List<BeatmapSaveData.ObstacleData>),
-          typeof( List<BeatmapSaveData.EventData>),
-        typeof(float),
-        typeof(float),
-        typeof(float) })]
+    [HarmonyPatch(typeof(BeatmapDataLoader))]
     [HarmonyPatch("GetBeatmapDataFromBeatmapSaveData", MethodType.Normal)]
 
     class BeatmapDataLoaderGetBeatmapDataFromBeatmapSaveData

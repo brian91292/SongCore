@@ -1,20 +1,20 @@
-﻿using System;
+﻿using BeatSaberMarkupLanguage.Settings;
+using Harmony;
+using IPA;
+using Newtonsoft.Json;
+using SongCore.UI;
+using SongCore.Utilities;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Media;
-using TMPro;
+using System.Reflection;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using IPA;
-using Harmony;
-using IPALogger = IPA.Logging.Logger;
-using SongCore.Utilities;
-using BSEvents = CustomUI.Utilities.BSEvents;
-using Newtonsoft.Json;
 using UnityEngine.Networking;
-using System.Threading;
+using UnityEngine.SceneManagement;
+using IPALogger = IPA.Logging.Logger;
+
 namespace SongCore
 {
     public class Plugin : IBeatSaberPlugin
@@ -23,38 +23,52 @@ namespace SongCore
         public static string oneSaberCharacteristicName = "OneSaber";
         public static string noArrowsCharacteristicName = "NoArrows";
         internal static HarmonyInstance harmony;
-        internal static bool ColorsInstalled = false;
+        //     internal static bool ColorsInstalled = false;
         internal static bool PlatformsInstalled = false;
         internal static bool customSongColors;
         internal static bool customSongPlatforms;
         internal static int _currentPlatform = -1;
 
 
-
         public void OnApplicationStart()
         {
-            ColorsInstalled = Utils.IsModInstalled("Custom Colors") || Utils.IsModInstalled("Chroma");
+            //Delete Old Config
+            try
+            {
+                if (File.Exists(Environment.CurrentDirectory + "/UserData/SongCore.ini"))
+                    File.Delete(Environment.CurrentDirectory + "/UserData/SongCore.ini");
+            }
+            catch
+            {
+                Logging.logger.Warn("Failed to delete old config file!");
+            }
+
+            //      ColorsInstalled = Utils.IsModInstalled("Custom Colors") || Utils.IsModInstalled("Chroma");
             PlatformsInstalled = Utils.IsModInstalled("Custom Platforms");
             harmony = HarmonyInstance.Create("com.kyle1413.BeatSaber.SongCore");
             harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
             //     Collections.LoadExtraSongData();
             UI.BasicUI.GetIcons();
-            CustomUI.Utilities.BSEvents.levelSelected += BSEvents_levelSelected;
-            CustomUI.Utilities.BSEvents.gameSceneLoaded += BSEvents_gameSceneLoaded;
-            CustomUI.Utilities.BSEvents.menuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
+            BS_Utils.Utilities.BSEvents.levelSelected += BSEvents_levelSelected;
+            BS_Utils.Utilities.BSEvents.gameSceneLoaded += BSEvents_gameSceneLoaded;
+            BS_Utils.Utilities.BSEvents.menuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
             if (!File.Exists(Collections.dataPath))
                 File.Create(Collections.dataPath);
             else
                 Collections.LoadExtraSongData();
             Collections.RegisterCustomCharacteristic(UI.BasicUI.MissingCharIcon, "Missing Characteristic", "Missing Characteristic", "MissingCharacteristic", "MissingCharacteristic");
             Collections.RegisterCustomCharacteristic(UI.BasicUI.LightshowIcon, "Lightshow", "Lightshow", "Lightshow", "Lightshow");
-            Collections.RegisterCustomCharacteristic(UI.BasicUI.ExtraDiffsIcon, "Lawless", "Lawless - These difficulties don't follow conventional standards, and should not necessarily be expected to reflect their given names.", "Lawless", "Lawless");
+            Collections.RegisterCustomCharacteristic(UI.BasicUI.ExtraDiffsIcon, "Lawless", "Lawless - Anything Goes", "Lawless", "Lawless");
 
+            if (!File.Exists(Environment.CurrentDirectory + "/UserData/SongCore/folders.xml"))
+                File.WriteAllBytes(Environment.CurrentDirectory + "/UserData/SongCore/folders.xml", Utils.GetResource(Assembly.GetExecutingAssembly(), "SongCore.Data.folders.xml"));
+            Loader.SeperateSongFolders.InsertRange(0, Data.SeperateSongFolder.ReadSeperateFoldersFromFile(Environment.CurrentDirectory + "/UserData/SongCore/folders.xml"));
         }
 
         private void BSEvents_menuSceneLoadedFresh()
         {
             Loader.OnLoad();
+            RequirementsUI.instance.Setup();
         }
 
         private void BSEvents_gameSceneLoaded()
@@ -62,12 +76,12 @@ namespace SongCore
             SharedCoroutineStarter.instance.StartCoroutine(DelayedNoteJumpMovementSpeedFix());
         }
 
-        private void BSEvents_levelSelected(LevelPackLevelsViewController arg1, IPreviewBeatmapLevel level)
+        private void BSEvents_levelSelected(LevelCollectionViewController arg1, IPreviewBeatmapLevel level)
         {
             if (level is CustomPreviewBeatmapLevel)
             {
                 var customLevel = level as CustomPreviewBeatmapLevel;
-         //       Logging.Log((level as CustomPreviewBeatmapLevel).customLevelPath);
+                //       Logging.Log((level as CustomPreviewBeatmapLevel).customLevelPath);
                 Data.ExtraSongData songData = Collections.RetrieveExtraSongData(Hashing.GetCustomLevelHash(customLevel), customLevel.customLevelPath);
                 Collections.SaveExtraSongData();
 
@@ -104,63 +118,13 @@ namespace SongCore
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode sceneMode)
         {
-            if (scene.name == "MenuCore")
+            if (scene.name == "MenuViewControllers")
             {
-                UI.BasicUI.CreateUI();
-                if (UI.BasicUI.reqDialog == null)
-                    UI.BasicUI.InitRequirementsMenu();
+                BSMLSettings.instance.AddSettingsMenu("SongCore", "SongCore.UI.settings.bsml", SCSettings.instance);
             }
 
         }
-/*
-        internal static async void LoadWipPack()
-        {
-           if(Collections.WipLevelPack == null)
-            {
-                BeatmapLevelsModelSO levelModelSO = Resources.FindObjectsOfTypeAll<BeatmapLevelsModelSO>().FirstOrDefault();
-                CancellationToken cancellationToken = new CancellationTokenSource().Token;
-                Collections.WipLevelPack = await levelModelSO.GetField<CustomLevelLoaderSO>("_customLevelLoader").LoadCustomBeatmapLevelPackAsync(Path.Combine(CustomLevelPathHelper.baseProjectPath,"CustomWIPLevels"), "WIP Levels", cancellationToken);
-                Collections.WipLevelPack.SetField("_coverImage", UI.BasicUI.WIPIcon);
-                if (levelModelSO == null)
-                {
-                    Logging.Log("Null levelModel");
-                    return;
-                }
-                IBeatmapLevelPackCollection loadedLevelPacks = levelModelSO.GetField<IBeatmapLevelPackCollection>("_allLoadedBeatmapLevelPackCollection");
-                List<IBeatmapLevelPack> allLoadedBeatmapLevelPacks = new List<IBeatmapLevelPack>(loadedLevelPacks.beatmapLevelPacks);
-                foreach (IBeatmapLevelPack pack in allLoadedBeatmapLevelPacks)
-                {
-                    Logging.Log(pack.packID);
-      //              Logging.Log(CustomLevelPathHelper.customLevelsDirectoryPath);
-                    if (pack.packID == "custom_levelpack_" + CustomLevelPathHelper.customLevelsDirectoryPath)
-                    {
-                        allLoadedBeatmapLevelPacks.Remove(pack);
-                        break;
-                    }
-                    Logging.Log("");
-                }
-           //     allLoadedBeatmapLevelPacks.Clear();
-                allLoadedBeatmapLevelPacks.Add(Collections.WipLevelPack);
-                //   Logging.Log(Collections.WipLevelPack.packName + Collections.WipLevelPack.packID + Collections.WipLevelPack.beatmapLevelCollection.beatmapLevels.Count());
-                BeatmapLevelPackCollection newCollection = new BeatmapLevelPackCollection(allLoadedBeatmapLevelPacks.ToArray());
-                levelModelSO.SetField("_allLoadedBeatmapLevelPackCollection", newCollection);
-                
-            BeatmapLevelPackCollectionSO newCollection2 = ScriptableObject.CreateInstance<BeatmapLevelPackCollectionSO>();
-            newCollection2.SetField("_allBeatmapLevelPacks", newCollection.beatmapLevelPacks);
-
-            levelModelSO.SetField("_loadedBeatmapLevelPackCollection", newCollection2);
-            levelModelSO.UpdateLoadedPreviewLevels();
-    //        ReflectionUtil.InvokeMethod(levelModelSO, "OnEnable");
-                foreach (IBeatmapLevelPack pack in allLoadedBeatmapLevelPacks)
-                {
-                    Logging.Log(pack.packName);
-                }
-            }
-
-         
-
-        }
-        */
+       
         public void OnSceneUnloaded(Scene scene)
         {
 
@@ -171,7 +135,7 @@ namespace SongCore
             customSongColors = UI.BasicUI.ModPrefs.GetBool("SongCore", "customSongColors", true, true);
             customSongPlatforms = UI.BasicUI.ModPrefs.GetBool("SongCore", "customSongPlatforms", true, true);
             GameObject.Destroy(GameObject.Find("SongCore Color Setter"));
-            if (nextScene.name == "MenuCore")
+            if (nextScene.name == "MenuViewControllers")
             {
                 BS_Utils.Gameplay.Gamemode.Init();
                 if (PlatformsInstalled)
@@ -190,16 +154,9 @@ namespace SongCore
                         Logging.logger.Info("Checking Custom Environment");
                         CheckCustomSongEnvironment(data.difficultyBeatmap);
                     }
-
-
-                    if (songData._colorLeft != null && songData._colorRight != null)
-                    {
-                        if (customSongColors && ColorsInstalled)
-                            SetSongColors(songData._colorLeft, songData._colorRight);
-                    }
                 }
                 else
-                    Console.WriteLine("null data");
+                    Logging.logger.Info("Null custom song extra data");
 
 
             }
@@ -277,66 +234,6 @@ namespace SongCore
         {
         }
 
-        private void SetSongColors(Data.ExtraSongData.MapColor left, Data.ExtraSongData.MapColor right)
-        {
-            Color colorLeft = new Color(left.r, left.g, left.b);
-            Color colorRight = new Color(right.r, right.g, right.b);
-            GameObject colorSetterObj = null;
-            EnvironmentColorsSetter colorSetter;
-            if (BS_Utils.Plugin.LevelData.GameplayCoreSceneSetupData.difficultyBeatmap.level.environmentSceneInfo.sceneName.Contains("KDA"))
-            {
-                //     Console.WriteLine("KDA");
-                colorSetter = Resources.FindObjectsOfTypeAll<EnvironmentColorsSetter>().FirstOrDefault();
-            }
-            else
-            {
-                colorSetterObj = new GameObject("SongCore Color Setter");
-
-                colorSetterObj.SetActive(false);
-                colorSetter = colorSetterObj.AddComponent<EnvironmentColorsSetter>();
-            }
-
-            var scriptableColors = Resources.FindObjectsOfTypeAll<SimpleColorSO>();
-            SimpleColorSO[] A = new SimpleColorSO[2];
-            SimpleColorSO[] B = new SimpleColorSO[2];
-            foreach (var color in scriptableColors)
-            {
-                //     Console.WriteLine("Color: " + color.name);
-                int i = 0;
-                if (color.name == "BaseNoteColor1")
-                {
-                    B[0] = color;
-                    i++;
-                }
-                else if (color.name == "BaseNoteColor0")
-                {
-                    A[0] = color;
-                    i++;
-                }
-                else if (color.name == "BaseColor0")
-                {
-                    A[1] = color;
-                    i++;
-                }
-                else if (color.name == "BaseColor1")
-                {
-                    B[1] = color;
-                    i++;
-                }
-            }
-            colorSetter.SetPrivateField("_colorsA", A);
-            colorSetter.SetPrivateField("_colorsB", B);
-            colorSetter.SetPrivateField("_colorManager", Resources.FindObjectsOfTypeAll<ColorManager>().First());
-            colorSetter.SetPrivateField("_overrideColorA", colorRight);
-            colorSetter.SetPrivateField("_overrideColorB", colorLeft);
-            //    Console.WriteLine("Turning on");
-            if (colorSetterObj != null)
-                colorSetterObj.SetActive(true);
-
-            colorSetter.Awake();
-
-
-        }
 
         private void CheckCustomSongEnvironment(IDifficultyBeatmap song)
         {
@@ -344,6 +241,7 @@ namespace SongCore
             if (songData == null) return;
             if (string.IsNullOrWhiteSpace(songData._customEnvironmentName))
             {
+                _currentPlatform = -1;
                 return;
             }
             int _customPlatform = customEnvironment(songData._customEnvironmentName);

@@ -1,27 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
-using Harmony;
+﻿using Harmony;
 using TMPro;
-using SongCore.Utilities;
 namespace SongCore.HarmonyPatches
 {
-    [HarmonyPatch(typeof(LevelPackLevelsViewController))]
-    [HarmonyPatch("HandleLevelPackLevelsTableViewDidSelectLevel", MethodType.Normal)]
+    [HarmonyPatch(typeof(LevelCollectionViewController))]
+    [HarmonyPatch("HandleLevelCollectionTableViewDidSelectLevel", MethodType.Normal)]
     class LevelPackLevelsSelectedPatch
     {
         //      public static OverrideClasses.CustomLevel previouslySelectedSong = null;
-        static void Prefix(LevelPackLevelsTableView tableView, IPreviewBeatmapLevel level)
+        static void Prefix(LevelCollectionTableView tableView, IPreviewBeatmapLevel level)
         {
-            if(level is CustomPreviewBeatmapLevel)
+            if (level is CustomPreviewBeatmapLevel)
             {
                 var customLevel = level as CustomPreviewBeatmapLevel;
                 if (customLevel != null)
                 {
-             //       Logging.Log(Utilities.Hashing.GetCustomLevelHash(customLevel));
+                    //       Logging.Log(Utilities.Hashing.GetCustomLevelHash(customLevel));
                     SongCore.Collections.AddSong(Utilities.Hashing.GetCustomLevelHash(customLevel), customLevel.customLevelPath);
                     SongCore.Collections.SaveExtraSongData();
                 }
@@ -33,7 +26,7 @@ namespace SongCore.HarmonyPatches
 [HarmonyPatch("SetDataFromLevelAsync", MethodType.Normal)]
 public class LevelListTableCellSetDataFromLevel
 {
-    static void Postfix(IPreviewBeatmapLevel level, ref TextMeshProUGUI ____authorText)
+    static void Postfix(IPreviewBeatmapLevel level, bool isFavorite, ref TextMeshProUGUI ____authorText)
     {
         if (!(level is CustomPreviewBeatmapLevel))
             return;
@@ -41,10 +34,26 @@ public class LevelListTableCellSetDataFromLevel
 
         ____authorText.richText = true;
         //     ____authorText.overflowMode = TextOverflowModes.Overflow;
-        if (!string.IsNullOrWhiteSpace(customLevel.levelAuthorName)) 
-        ____authorText.text = customLevel.songAuthorName + " <size=80%>[" +customLevel.levelAuthorName + "]</size>";
+        if (!string.IsNullOrWhiteSpace(customLevel.levelAuthorName))
+            ____authorText.text = customLevel.songAuthorName + " <size=80%>[" + customLevel.levelAuthorName + "]</size>";
 
 
 
     }
 }
+/*
+[HarmonyPatch(typeof(LevelCollectionViewController))]
+[HarmonyPatch("RefreshLevelsAvailability", MethodType.Normal)]
+class LevelPackLevelsSelectedPatch
+{
+    //      public static OverrideClasses.CustomLevel previouslySelectedSong = null;
+    static bool Prefix(IBeatmapLevelPack ____pack)
+    {
+     //   Logging.logger.Info(____pack.packID);
+        if (____pack.packID.Contains(CustomLevelLoader.kCustomLevelPackPrefixId))
+            return false;
+        else
+            return true;
+    }
+}
+*/

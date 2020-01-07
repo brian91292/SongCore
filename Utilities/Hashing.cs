@@ -5,20 +5,19 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-
+using UnityEngine;
 namespace SongCore.Utilities
 {
     public class Hashing
     {
         internal static Dictionary<string, SongHashData> cachedSongHashData = new Dictionary<string, SongHashData>();
-        internal static string cachedHashDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"..\LocalLow\Hyperbolic Magnetism\Beat Saber\SongHashData.dat");
+        internal static string cachedHashDataPath = Path.Combine(Application.persistentDataPath, "SongHashData.dat");
         public static void ReadCachedSongHashes()
         {
             if (File.Exists(cachedHashDataPath))
             {
                 cachedSongHashData = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, SongHashData>>(File.ReadAllText(cachedHashDataPath));
-                if(cachedSongHashData == null) cachedSongHashData = new Dictionary<string, SongHashData>();
+                if (cachedSongHashData == null) cachedSongHashData = new Dictionary<string, SongHashData>();
                 Logging.Log($"Finished reading cached hashes for {cachedSongHashData.Count} songs!");
             }
         }
@@ -46,8 +45,8 @@ namespace SongCore.Utilities
                 hash ^= f.Length;
             }
             return hash;
-        } 
-        
+        }
+
         private static bool GetCachedSongData(string customLevelPath, out long directoryHash, out string cachedSongHash)
         {
             directoryHash = GetDirectoryHash(customLevelPath);

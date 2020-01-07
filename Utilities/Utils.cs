@@ -1,17 +1,11 @@
 ﻿using System;
-using System.Security.Cryptography;
-using System.Text;
 using System.IO;
-using TMPro;
-using UnityEngine;
 using System.Linq;
-using UnityEngine.UI;
 using System.Reflection;
-using System.Linq;
-using System.Collections;
-using System.Collections.Generic;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using TMPro;
+using UnityEngine;
 namespace SongCore.Utilities
 {
     public static class Utils
@@ -34,6 +28,10 @@ namespace SongCore.Utilities
             return false;
         }
 
+        public static Color ColorFromMapColor(Data.ExtraSongData.MapColor mapColor)
+        {
+            return new Color(mapColor.r, mapColor.g, mapColor.b);
+        }
         public static TEnum ToEnum<TEnum>(this string strEnumValue, TEnum defaultValue)
         {
             if (!Enum.IsDefined(typeof(TEnum), strEnumValue))
@@ -52,20 +50,20 @@ namespace SongCore.Utilities
             if (!exists)
             {
                 DirectoryInfo di = System.IO.Directory.CreateDirectory(file);
-        //        Console.WriteLine("The Folder is created Sucessfully");
+                //        Console.WriteLine("The Folder is created Sucessfully");
             }
             else
             {
-        //        Console.WriteLine("The Folder already exists");
+                //        Console.WriteLine("The Folder already exists");
             }
             try
             {
-            DirectoryInfo dInfo = new DirectoryInfo(file);
-            DirectorySecurity dSecurity = dInfo.GetAccessControl();
-            dSecurity.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.WorldSid, null), FileSystemRights.FullControl, InheritanceFlags.ObjectInherit | InheritanceFlags.ContainerInherit, PropagationFlags.NoPropagateInherit, AccessControlType.Allow));
-            dInfo.SetAccessControl(dSecurity);
+                DirectoryInfo dInfo = new DirectoryInfo(file);
+                DirectorySecurity dSecurity = dInfo.GetAccessControl();
+                dSecurity.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.WorldSid, null), FileSystemRights.FullControl, InheritanceFlags.ObjectInherit | InheritanceFlags.ContainerInherit, PropagationFlags.NoPropagateInherit, AccessControlType.Allow));
+                dInfo.SetAccessControl(dSecurity);
             }
-            catch(Exception ex)
+            catch
             {
                 Logging.logger.Error("Exception trying to Grant access to " + file);
             }

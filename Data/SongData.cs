@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -34,6 +33,9 @@ namespace SongCore.Data
             public RequirementData additionalDifficultyData;
             public MapColor _colorLeft;
             public MapColor _colorRight;
+            public MapColor _envColorLeft;
+            public MapColor _envColorRight;
+            public MapColor _obstacleColor;
         }
         [Serializable]
         public class RequirementData
@@ -116,9 +118,13 @@ namespace SongCore.Data
                         string diffLabel = "";
                         MapColor diffLeft = null;
                         MapColor diffRight = null;
+                        MapColor diffEnvLeft = null;
+                        MapColor diffEnvRight = null;
+                        MapColor diffObstacle = null;
+
                         BeatmapDifficulty diffDifficulty = Utilities.Utils.ToEnum((string)diffBeatmap["_difficulty"], BeatmapDifficulty.Normal);
                         JObject beatmapData;
-                        if(diffBeatmap.ContainsKey("_customData"))
+                        if (diffBeatmap.ContainsKey("_customData"))
                         {
                             beatmapData = (JObject)diffBeatmap["_customData"];
                             if (beatmapData.ContainsKey("_difficultyLabel")) diffLabel = (string)beatmapData["_difficultyLabel"];
@@ -147,6 +153,43 @@ namespace SongCore.Data
                                 }
 
                             }
+
+                            if (beatmapData.ContainsKey("_envColorLeft"))
+                            {
+                                if (beatmapData["_envColorLeft"].Children().Count() == 3)
+                                {
+                                    diffEnvLeft = new MapColor(0, 0, 0);
+                                    diffEnvLeft.r = (float)beatmapData["_envColorLeft"]["r"];
+                                    diffEnvLeft.g = (float)beatmapData["_envColorLeft"]["g"];
+                                    diffEnvLeft.b = (float)beatmapData["_envColorLeft"]["b"];
+                                }
+
+                            }
+
+                            if (beatmapData.ContainsKey("_envColorRight"))
+                            {
+                                if (beatmapData["_envColorRight"].Children().Count() == 3)
+                                {
+                                    diffEnvRight = new MapColor(0, 0, 0);
+                                    diffEnvRight.r = (float)beatmapData["_envColorRight"]["r"];
+                                    diffEnvRight.g = (float)beatmapData["_envColorRight"]["g"];
+                                    diffEnvRight.b = (float)beatmapData["_envColorRight"]["b"];
+                                }
+
+                            }
+
+                            if (beatmapData.ContainsKey("_obstacleColor"))
+                            {
+                                if (beatmapData["_obstacleColor"].Children().Count() == 3)
+                                {
+                                    diffObstacle = new MapColor(0, 0, 0);
+                                    diffObstacle.r = (float)beatmapData["_obstacleColor"]["r"];
+                                    diffObstacle.g = (float)beatmapData["_obstacleColor"]["g"];
+                                    diffObstacle.b = (float)beatmapData["_obstacleColor"]["b"];
+                                }
+
+                            }
+
                             if (beatmapData.ContainsKey("_warnings"))
                                 diffWarnings.AddRange(((JArray)beatmapData["_warnings"]).Select(c => (string)c));
                             if (beatmapData.ContainsKey("_information"))
@@ -171,7 +214,10 @@ namespace SongCore.Data
                             _difficultyLabel = diffLabel,
                             additionalDifficultyData = diffReqData,
                             _colorLeft = diffLeft,
-                            _colorRight = diffRight
+                            _colorRight = diffRight,
+                            _envColorLeft = diffEnvLeft,
+                            _envColorRight = diffEnvRight,
+                            _obstacleColor = diffObstacle
 
                         });
                     }

@@ -1,92 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Harmony;
+﻿using Harmony;
 using SongCore.Utilities;
+using System.Linq;
+using System.Threading;
 namespace SongCore.HarmonyPatches
 {
-    [HarmonyPatch(typeof(CustomLevelLoaderSO))]
-    [HarmonyPatch("LoadCustomPreviewBeatmapLevelPacksAsync", MethodType.Normal)]
-    class LoadingPatches
+
+    [HarmonyPatch(typeof(BeatmapLevelsModel))]
+    [HarmonyPatch("GetCustomLevelPackCollectionAsync", MethodType.Normal)]
+    internal class StopVanillaLoadingPatch
     {
-        static void Prefix(ref CustomLevelLoaderSO.CustomPackFolderInfo[] customPackFolderInfos, CancellationToken cancellationToken)
+        static void Prefix()
         {
-            var c  = customPackFolderInfos.ToList();
-            c.Add(new CustomLevelLoaderSO.CustomPackFolderInfo
-            {
-                folderName = "CustomWIPLevels",
-                packName = "WIP Levels"
-            });
-            customPackFolderInfos = c.ToArray();
-
-
-        //    Plugin.LoadWipPack();
-        }
-
-        [HarmonyPatch(typeof(LevelPacksViewController))]
-        [HarmonyPatch("SetData", MethodType.Normal)]
-        class WipPatch2
-        {
-            static void Postfix(ref IBeatmapLevelPackCollection levelPackCollection)
-            {
-                Collections.WipLevelPack = levelPackCollection.beatmapLevelPacks.FirstOrDefault(x => x.packName == "WIP Levels") as CustomBeatmapLevelPack;
-                if(Collections.WipLevelPack != null)
-                    Collections.WipLevelPack.SetField("_coverImage", UI.BasicUI.WIPIcon);
-            }
-        }
-        [HarmonyPatch(typeof(SoloFreePlayFlowCoordinator))]
-        [HarmonyPatch("LoadBeatmapLevelPackCollectionAsync", MethodType.Normal)]
-        class PackLoadingPatch1
-        {
-            static void Postfix(ref IBeatmapLevelPackCollection ____levelPackCollection)
-            {
-      //          Logging.Log("finished loading");
-            }
+            var cancel = UnityEngine.Resources.FindObjectsOfTypeAll<LevelFilteringNavigationController>().First().GetField<CancellationTokenSource>("_cancellationTokenSource");
+            cancel.Cancel();
 
         }
-        [HarmonyPatch(typeof(PartyFreePlayFlowCoordinator))]
-        [HarmonyPatch("LoadBeatmapLevelPackCollectionAsync", MethodType.Normal)]
-        class PackLoadingPatch2
-        {
-
-        }
-        [HarmonyPatch(typeof(CustomLevelLoaderSO))]
-        [HarmonyPatch("LoadCustomPreviewBeatmapLevelPacksAsync", MethodType.Normal)]
-        class StopVanillaLoadingPatch
-        {
-            static bool Prefix(ref Task<CustomBeatmapLevelPack[]> __result)
-            {
-                __result = new Task<CustomBeatmapLevelPack[]>(delegate { return new CustomBeatmapLevelPack[0]; });
-                return false;
-            }
-        }
-        /*
-        [HarmonyPatch(typeof(CustomLevelLoaderSO))]
-        [HarmonyPatch("LoadCustomPreviewBeatmapLevelAsync", MethodType.Normal)]
-        class SongLoadingPatch
-        {
-            static void Postfix(string customLevelPath, StandardLevelInfoSaveData standardLevelInfoSaveData, CancellationToken cancellationToken, ref Task<CustomPreviewBeatmapLevel> __result)
-            {
-                if (__result == null) return;
-                CustomPreviewBeatmapLevel level = __result.Result;
-     //           Logging.Log(customLevelPath);
-                if (level == null) return;
-      //          Logging.Log("result: " + level.songName);
-                string hash = Utils.GetCustomLevelHash(level);
-                if (!Collections._loadedHashes.ContainsKey(hash))
-                {
-                    List<CustomPreviewBeatmapLevel> value = new List<CustomPreviewBeatmapLevel>();
-                    value.Add(level);
-                    Collections._loadedHashes.Add(hash, value);
-                }
-                else
-                    Collections._loadedHashes[hash].Add(level);
-           //     Logging.Log(Collections._loadedHashes.Count + Collections._loadedHashes.First().Key);
-            }
-        }
-        */
     }
+
+    [HarmonyPatch(typeof(LevelFilteringNavigationController))]
+    [HarmonyPatch("InitializeIfNeeded", MethodType.Normal)]
+    internal class StopVanillaLoadingPatch2
+    {
+
+        static void Postfix(ref LevelFilteringNavigationController __instance, ref TabBarViewController ____tabBarViewController)
+        {
+      //      Logging.logger.Info("Set CustomLevelCollection");
+            __instance.GetField("_customLevelsTabBarData")?.SetField("annotatedBeatmapLevelCollections", Loader.CustomBeatmapLevelPackCollectionSO?.beatmapLevelPacks);
+
+        }
+    }
+
+    [HarmonyPatch(typeof(LevelFilteringNavigationController))]
+    [HarmonyPatch("ReloadSongListIfNeeded", MethodType.Normal)]
+    internal class StopVanillaLoadingPatch3
+    {
+
+        static bool Prefix(ref LevelFilteringNavigationController __instance, ref TabBarViewController ____tabBarViewController)
+        {
+            __instance.GetField("_customLevelsTabBarData")?.SetField("annotatedBeatmapLevelCollections", Loader.CustomBeatmapLevelPackCollectionSO?.beatmapLevelPacks);
+            return false;
+        }
+    }
+
 }
